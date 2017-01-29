@@ -2,8 +2,24 @@
 // Blog: http://psyho.gg/
 // Twitter: https://twitter.com/fakepsyho
 
-#include <bits/stdc++.h>
+#include <thread>
+#include <mutex>
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <algorithm>
+#include <vector>
+#include <map>
+#include <set>
+#include <cassert>
+#include <cmath>
+#include <cstdlib>
+#include <cstdio>
+#include <cstring>
+
 #include <sys/time.h>
+
+// #define USE_VIS
 
 #ifdef USE_VIS
 #include "CImg.h"
@@ -88,70 +104,88 @@ double getTime() {
 	return tv.tv_sec + tv.tv_usec * 1e-6;
 }
 
-struct RNG {
-    unsigned int MT[624];
-    int index;
-	
-	RNG(int seed = 1) {
-		init(seed);
+VS readFile(string fn) {
+	const int MAX_LINE = 1000000;
+	FILE *f = fopen(fn.c_str(), "r");
+	VS rv;
+	while (!feof(f)) {
+		static char line[MAX_LINE];
+		line[0] = 0;
+		fgets(line, MAX_LINE, f);
+		int n = strlen(line);
+		while (n && (line[n-1] == '\n' || line[n-1] == '\r')) line[--n] = 0;
+		if (n == 0) continue;
+		string s(line);
+		s.shrink_to_fit();
+		rv.PB(s);
 	}
-    
-    void init(int seed = 1) {
-        MT[0] = seed;
-        FOR(i, 1, 624) MT[i] = (1812433253UL * (MT[i-1] ^ (MT[i-1] >> 30)) + i);
-        index = 0;
-    }
-    
-    void generate() {
-        const unsigned int MULT[] = {0, 2567483615UL};
-        REP(i, 227) {
-            unsigned int y = (MT[i] & 0x8000000UL) + (MT[i+1] & 0x7FFFFFFFUL);
-            MT[i] = MT[i+397] ^ (y >> 1);
-            MT[i] ^= MULT[y&1];
-        }
-        FOR(i, 227, 623) {
-            unsigned int y = (MT[i] & 0x8000000UL) + (MT[i+1] & 0x7FFFFFFFUL);
-            MT[i] = MT[i-227] ^ (y >> 1);
-            MT[i] ^= MULT[y&1];
-        }
-        unsigned int y = (MT[623] & 0x8000000UL) + (MT[0] & 0x7FFFFFFFUL);
-        MT[623] = MT[623-227] ^ (y >> 1);
-        MT[623] ^= MULT[y&1];
-    }
-    
-    unsigned int rand() {
-        if (index == 0) {
-            generate();
-        }
-        
-        unsigned int y = MT[index];
-        y ^= y >> 11;
-        y ^= y << 7  & 2636928640UL;
-        y ^= y << 15 & 4022730752UL;
-        y ^= y >> 18;
-        index = index == 623 ? 0 : index + 1;
-        return y;
-    }
-    
-    INLINE int next() {
-        return rand();
-    }
-    
-    INLINE int next(int x) {
-        return rand() % x;
-    }
-    
-    INLINE int next(int a, int b) {
-        return a + (rand() % (b - a));
-    }
-    
-    INLINE double nextDouble() {
-        return (rand() + 0.5) * (1.0 / 4294967296.0);
-    }
-};
+	rv.shrink_to_fit();
+	return rv;
+}
 
-#include "mlutils.cpp"
-#include "streams.cpp"
+void saveFile(string fn, VS &data) {
+	FILE *f = fopen(fn.c_str(), "w");
+	for (string &s : data) {
+		fputs(s.c_str(), f);
+		fputs("\n", f);
+	}
+	fclose(f);
+}
+
+bool fileExists(string fn) {
+	FILE *f = fopen(fn.c_str(), "r");
+	if (f) fclose(f);
+	return f != NULL;
+}
+
+string genTmpFile() {
+	while (true) {
+		string s = "";
+		REP(i, 8) s += (char)('a' + rand() % ('z' - 'a' + 1));
+		if (!fileExists(s)) return s;
+	}
+}
+
+void deleteFile(string fn) {
+	system(("rm " + fn).c_str());
+}
+
+VS fileList(string dir = ".") {
+	string tmp = genTmpFile();
+	system(("ls -1 " + dir + " > " + tmp).c_str());
+	VS rv = readFile(tmp);
+	REP(i, rv.S) if (rv[i] == tmp) rv.erase(rv.begin() + i);
+	system(("rm " + tmp).c_str());
+	return rv;
+}
+
+void system(string s) {
+	system(s.c_str());
+}
+
+
+template <class T>
+static double calcMean(VC<T> &v) {
+	double rv = 0;
+	REP(i, v.S) rv += v[i];
+	return rv / v.S;
+}
+
+template <class T>
+static double calcSTDDev(VC<T> &v) {
+	double m = calcMean(v);
+	double rv = 0;
+	REP(i, v.S) rv += (v[i] - m) * (v[i] - m);
+	return sqrt(rv / v.S);
+}
+
+double lerp(double a, double b, double t) {
+	return a + (b - a) * t;
+}	
+
+int lerpi(double a, double b, double t) {
+	return (int)(a + (b - a) * t);
+}
 
 int THREADS_NO = 4;
 
@@ -717,7 +751,7 @@ struct Grid {
 					}
 				}
 				if (vt[x][y] == 0) continue;
-				double rmse = Utils::calcSTDDev(va[x][y]);
+				double rmse = calcSTDDev(va[x][y]);
 				ok = false;
 				// if (va[x][y].S >= MIN_OCC && rmse < LIMIT_A) ok = true;
 				// if (x%3==0&&y%3==0 && !ok && va[x][y].S >= MIN2_OCC && rmse < LIMIT_B) ok = true, useFilter = true;
@@ -1221,11 +1255,6 @@ int main(int argc, char **argv) {
 			ID++;
 		}
 	}
-	
-	// generateFlatResult(354765.34, 6182061.65, 354052.37, 6182691.09, 2000, 2000, "flat.txt");
-	// generateFlatResult(354979.12, 6185507.78, 355352.07, 6185158.61, 2000, 2000, "sub1a.txt");
-	// generateFlatResult(355023.22, 6187394.25, 355461.41, 6186990.63, 2000, 2000, "sub1b.txt");
-	// generateFlatResult(354382.49, 6188992.70, 353992.22, 6188675.99, 2000, 2000, "sub1c.txt");
 	return 0;
 }
 
