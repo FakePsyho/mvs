@@ -1,10 +1,21 @@
-# mvs
-[Summary]
+# Installation
+
+* Install [StereoPipeline](https://ti.arc.nasa.gov/tech/asr/intelligent-robotics/ngt/stereo/) and add its /bin directory to $PATH
+
+* Compile source with compile.sh
+
+* (optional) For visualization, you can add [CImg.h](http://cimg.eu/) library and add "-DUSE_VIS" to compilation options.
+
+---
+
+# Program Description
+
+## Summary
 
 Solution is built around NASA Ames Stereo Pipeline (https://ti.arc.nasa.gov/tech/asr/intelligent-robotics/ngt/stereo/), which produces very good point clouds from satellite imagery, but unfortunately its core functionality is limited to stereogrammetry. I use Stereo Pipeline in order to obtain point clouds from promising pairs of images. After that I use a rather simple algorithm to merge all of the point clouds which directly produces final result.
 
 
-[High-Level Overview]
+## High-Level Overview
 
 1) Run Stereo Pipeline "stereo" executable file in order to obtain point clouds for each promising pair of NITF files. Parameters are passed by creating new stereo.default file before each run. Solution uses provided NITF files, by explicitly cropping (using "left-image-crop-win" and "right-image-crop-win" parameters) our region of interest. 
 
@@ -15,7 +26,7 @@ Solution is built around NASA Ames Stereo Pipeline (https://ti.arc.nasa.gov/tech
 4) Optionally, post-process result in order to exploit scoring function (described below as well).
 
 
-[Merging Algorithm]
+## Merging Algorithm
 
 The first step is to compute the offsets of each image. It turns out that different pairs of images can produce results of very similar structure but up to around 10 meters apart from each other. In order to find offsets of all point clouds we use a naive greedy algorithm. We assume that the first offset is (0.0, 0.0). Then, iteratively we add next point cloud at offset that minimizes the average error between existing set of point clouds and new one. After adding all of the point clouds, we further improve the offsets by repeating the process one more time. During the second iteration we only adjust the offsets of existing point clouds (by removing them and adding them again).
 
@@ -24,7 +35,7 @@ One small detail that is worth mentioning is that when doing any calculation on 
 The last step is to compute the final merged point cloud. Again, my final result is simply a 2D image (with possibly some pixels missing). Each pixel (height of a tile) is computed as a median of pixels. In my final submission, I slightly deviated from this and when there's more than 5 pixels available, instead of using median, I use mean of the middle 4-5 pixels. It's hard to tell if that's a better idea. The premise behind it is that mean (after dropping potential outliers) might be better height estimation for places where it's relatively easy for photogrammetry to generate results.
 
 
-[Fine-Tuning Parameters]
+## Fine-Tuning Parameters
 
 Most of the paramaters that I use in Stereo Pipeline are default, except for these:
 --subpixel-mode 2
@@ -36,7 +47,7 @@ Most of the paramaters that I use in Stereo Pipeline are default, except for the
 Changing subpixel-mode was obvious choice. The reason for changing other parameters was that provided satellite images were quite sharp and decent quality. At the same time, they contained a lot of small-scaled features and highly-variable terrain, which most probably is not the standard usage for Stereo Pipeline. Based on this, I assumed I should reduce the amount of blur in preprocessing. At the same time, it should be advantageous to filter out way more points than usual, since we would like to limit our point clouds to contain only high-quality results.
 
 
-[Exploiting the Scoring Function]
+## Exploiting the Scoring Function
 
 Scoring function consisted of two separate components: completeness and accuracy. Both of them could be exploited (i.e. we were able to artificially improve our results without improving our solution) by careful postprocessing of returned point cloud.
 
@@ -45,7 +56,7 @@ Accuracy (RMSE, Root Mean Average Error) was computed over pixels where our retu
 The easiest was to accomplish this, was to not return point clouds for areas around the edges of buildings. Or to be more exact, to check if the difference between maximum and minimum expected height in close vicinity was above some fixed threshold. I believe that in total, I was able to reduce the RMSE by around 50%.
 
 
-[Running Program]
+## Running Program
 
 First step is to download and install all of the required files/libraries. Script setup.sh contains all prerequisites. Apart from installing some libraries through "apt-get" it also downloads StereoPipeline and puts it in home directory. It doesn't have to stay there, but remember that "StereoPipeline-2.5.3-2016-08-23-x86_64-Linux/bin/" should be added to PATH in order for solution to run. It's also worth mentioning that the script downloads the data Topcoder/S3 server. If you don't need, you can just comment those lines out.
 
@@ -60,7 +71,7 @@ There is a way to produce several point clouds, but it is a little bit more conv
 Fortunately, merging is pretty straightforward. After obtaining all of the point clouds (they will be placed in ./results directory) run "./x -kml PATH_TO_KML_FILE -m 1 results/tmp????.txt PATH_TO_OUTPUT_FILE [optional tweakable parameters]" and this will produce PATH_TO_OUTPUT_FILE with merged point cloud. Unfortunately, all of the parameters are not easily explained with words, so it's easiest to just read the source code in order to understand what exactly they are doing. Note that "results/tmp????.txt" is just a wildcard that matches all of the point clouds file names. You can change it to a different wildcard or just specify the file names separately.
 
 
-[Additional Information]
+## Additional Information
 
 - It's quite frequently mentioned in Stereo Pipeline documentation, that RPC camera model is completely inferior when compared to camera model that is normally attached to Digital Globe satellites which is described in their XML files. In one place it's mentioned that RPC model quite often produces errors up to several meters. I never had any chance to compare those two models, but I wouldn't be surprised if the results could have been drastically improved by including DigtalGlobe's XML model. That might have explain why the only pairs of images that were remotely useful were those that were rather close in time (usually only up to one month of difference). If that's the case, it's probably safe to assume that RPC model rather drastically affects the ortorectification phase. There's also a possibility that the sizes of computed offsets during merging algorithm would have been much smaller, although this shouldn't directly affect the quality of the final result.
 
