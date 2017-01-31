@@ -19,8 +19,6 @@
 
 #include <sys/time.h>
 
-// #define USE_VIS
-
 #ifdef USE_VIS
 #include "CImg.h"
 using namespace cimg_library;
@@ -28,27 +26,12 @@ using namespace cimg_library;
 
 using namespace std;
 
-#define INLINE   inline __attribute__ ((always_inline))
-#define NOINLINE __attribute__ ((noinline))
-
-#define ALIGNED __attribute__ ((aligned(16)))
-
-#define likely(x)   __builtin_expect(!!(x),1)
-#define unlikely(x) __builtin_expect(!!(x),0)
-
-#define SSELOAD(a)     _mm_load_si128((__m128i*)&a)
-#define SSESTORE(a, b) _mm_store_si128((__m128i*)&a, b)
-
 #define FOR(i,a,b)  for(int i=(a);i<(b);++i)
 #define REP(i,a)    FOR(i,0,a)
-#define ZERO(m)     memset(m,0,sizeof(m))
 #define ALL(x)      x.begin(),x.end()
 #define PB          push_back
 #define S           size()
 #define byte        unsigned char
-#define LL          long long
-#define ULL         unsigned long long
-#define LD          long double
 #define MP          make_pair
 #define X           first
 #define Y           second
@@ -57,19 +40,11 @@ using namespace std;
 #define PDD         pair<double, double>
 #define VI          VC<int>
 #define VVI         VC<VI>
-#define VVVI        VC<VVI>
 #define VPII        VC<PII>
-#define VVPII       VC<VPII>
-#define VVVPII      VC<VVPII>
 #define VD          VC<double>
 #define VVD         VC<VD>
 #define VVVD        VC<VVD>
-#define VPDD        VC<PDD>
-#define VVPDD       VC<VPDD>
-#define VVVPDD      VC<VVPDD>
 #define VS          VC<string>
-#define VVS         VC<VS>
-#define VVVS        VC<VVS>
 #define DB(a)       cerr << #a << ": " << (a) << endl;
 
 string NITF_DIRECTORY = "NITF";
@@ -684,29 +659,9 @@ struct Grid {
 	void save(string fout) {
 		FILE *f = fopen(fout.c_str(), "w");
 		VVD nv(xs, VD(ys, 0));
-		// VVD vw = {
-			// {},
-			// {1},
-			// {1, 1},
-			// {0, 2, 0},
-			// {0, 1, 1, 0},
-			// {0, 1, 3, 1, 0},
-			// {0, 1, 4, 4, 1, 0},
-			// {0, 1, 2, 5, 2, 1, 0},
-			// {0, 1, 3, 6, 6, 3, 1, 0}
-		// };
-		
-		// FOR(i, 1, vw.S) {
-			// double sum = 0;
-			// for (double &d : vw[i]) sum += d;
-			// for (double &d : vw[i]) d /= sum;
-		// }
-
 		REP(x, xs) REP(y, ys) if (vt[x][y]) {
 			sort(ALL(va[x][y]));
 			if (va[x][y].S < 5) {
-				// nv[x][y] = 0;
-				// REP(i, va[x][y].S) nv[x][y] += vw[va[x][y].S][i] * va[x][y][i];
 				nv[x][y] = va[x][y].S % 2 == 1 ? va[x][y][va[x][y].S/2] : (va[x][y][va[x][y].S/2-1] + va[x][y][va[x][y].S/2]) / 2;
 			} else {
 				int p0 = 0;
@@ -753,8 +708,6 @@ struct Grid {
 				if (vt[x][y] == 0) continue;
 				double rmse = calcSTDDev(va[x][y]);
 				ok = false;
-				// if (va[x][y].S >= MIN_OCC && rmse < LIMIT_A) ok = true;
-				// if (x%3==0&&y%3==0 && !ok && va[x][y].S >= MIN2_OCC && rmse < LIMIT_B) ok = true, useFilter = true;
 				int cno = 0;
 				FOR(dx, -1, 2) FOR(dy, -1, 2) {
 					if (dx && dy) continue;
@@ -780,7 +733,6 @@ struct Grid {
 					int ny = y + dy;
 					if (nx < 0 || nx >= xs || ny < 0 || ny >= ys || vt[nx][ny] == 0) continue;
 					REP(i, vt[nx][ny]) medianArray[medianArrayNo++] = va[nx][ny][i];
-					// medianArray[medianArrayNo++] = nv[nx][ny];
 				}
 				sort(medianArray, medianArray + medianArrayNo);
 				height = medianArrayNo % 2 ? medianArray[medianArrayNo/2] : (medianArray[medianArrayNo/2-1] + medianArray[medianArrayNo/2]) / 2;
@@ -1092,18 +1044,11 @@ int main(int argc, char **argv) {
 			sprintf(idstr, "%04d", id);
 			string rf = outputPrefix + string(idstr);
 			resultFiles.PB(rf);
-			// system("./x -r " + i2s(dir) + " " + rf + " " + files.X + " " + files.Y + " \"+" + options + "\" \"=" + parameters + "\"" + (projectionEnabled ? string(" -project") : string()));
 			system("./x -nitfdir " + NITF_DIRECTORY + " -kml " + KML_FILE + " -data " + SIMPLIFIED_DATA_DIRECTORY + " -output " + OUTPUT_FILE + " -r " + i2s(dir) + " " + rf + " " + files.X + " " + files.Y + " \"+" + options + "\" \"=" + parameters + "\"" + (projectionEnabled ? string(" -project") : string()));
 			#ifdef USE_VIS
 			system("./x -v results/" + rf + ".txt " + rf + ".bmp");
 			#endif
 		}
-		// string mergeCmd = "./x -m " + i2s(dir);
-		// for (string &s : resultFiles) mergeCmd += " results/" + s + ".txt";
-		// mergeCmd += " final" + i2s(dir) + ".txt";
-		// system(mergeCmd);
-		// system("./x -v final" + i2s(dir) + ".txt final" + i2s(dir) + ".bmp");
-		// system("zip submitfile" + i2s(dir) + ".zip final" + i2s(dir) + ".txt");
 	}
 	
 	if (visualizeScoreMode) {
@@ -1191,22 +1136,8 @@ int main(int argc, char **argv) {
 		assert(p1.X != -1 && p2.X != -1);
 		deleteFile("stereo.default");
 		if (!projectionEnabled) {
-			VS v = readFile("./StereoPipeline-2.5.3-2016-08-23-x86_64-Linux/examples/stereo.default.example");
-			v.PB("left-image-crop-win " + i2s((int)p1.X) + " " + i2s((int)p1.Y) + (dir == 0 ? " 3001 3001" : " 2001 2001"));
-			v.PB("right-image-crop-win " + i2s((int)p2.X) + " " + i2s((int)p2.Y) + (dir == 0 ? " 3001 3001" : " 2001 2001"));
-			if (parameters.S) {
-				VS vs = splt(parameters, ',');
-				for (string &s : vs) {
-					if (s.S == 0) continue;
-					string cmd = splt(s, ' ')[0];
-					REP(i, v.S) if (startsWith(v[i], cmd)) {
-						v.erase(v.begin() + i);
-						i--;
-					}
-					v.PB(s);
-				}
-			}
-			saveFile("stereo.default", v);
+			options += " --left-image-crop-win " + i2s((int)p1.X) + " " + i2s((int)p1.Y) + (dir == 0 ? " 3001 3001" : " 2001 2001");
+			options += " --right-image-crop-win " + i2s((int)p2.X) + " " + i2s((int)p2.Y) + (dir == 0 ? " 3001 3001" : " 2001 2001");
 		}
 		
 		if (projectionEnabled) {
@@ -1241,17 +1172,16 @@ int main(int argc, char **argv) {
 				diff++;
 				continue;
 			}
-			if (ID >= 120) {
-				if (readRPCOffset(0, files[a]).X == -1) continue;
-				if (readRPCOffset(0, files[b]).X == -1) continue;
-				system(("./x -r 0 tmp " + files[a] + " " + files[b] + " +" + options + " =" + parameters).c_str());
-				system(("./x -v results/tmp.txt images/tmp" + i2s(ID) + ".bmp").c_str());
-				system(("echo ID: " + i2s(ID) + " >> " + output).c_str());
-				system(("echo " + files[a] + " >> " + output).c_str());
-				system(("echo " + files[b] + " >> " + output).c_str());
-				system(("./x -s results/tmp.txt >> " + output).c_str());
-				system(("echo >> " + output).c_str());
-			}
+			
+			if (readRPCOffset(0, files[a]).X == -1) continue;
+			if (readRPCOffset(0, files[b]).X == -1) continue;
+			system(("./x -r 0 tmp " + files[a] + " " + files[b] + " +" + options + " =" + parameters).c_str());
+			system(("./x -v results/tmp.txt images/tmp" + i2s(ID) + ".bmp").c_str());
+			system(("echo ID: " + i2s(ID) + " >> " + output).c_str());
+			system(("echo " + files[a] + " >> " + output).c_str());
+			system(("echo " + files[b] + " >> " + output).c_str());
+			system(("./x -s results/tmp.txt >> " + output).c_str());
+			system(("echo >> " + output).c_str());
 			ID++;
 		}
 	}
