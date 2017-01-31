@@ -2,9 +2,45 @@
 
 * Install [StereoPipeline](https://ti.arc.nasa.gov/tech/asr/intelligent-robotics/ngt/stereo/) and add its /bin directory to $PATH
 
+* Install [libLAS](http://www.liblas.org/) : ``sudo apt-get install liblas-bin``
+
 * Compile source with compile.sh
 
-* (optional) For visualization, you can add [CImg.h](http://cimg.eu/) library and add "-DUSE_VIS" to compilation options.
+* (optional) For visualization, you can add [CImg.h](http://cimg.eu/) library and add "-DUSE_VIS -lX11" to compilation options.
+
+---
+
+# Command-line Arguments
+
+## Modes
+
+``-v INPUT [OUTPUT] [-vscale SCALE]`` 
+
+Visualization mode. Program has to be compiled with visualization support in order for it to work. Reads point cloud ``INPUT`` file and saves it as ``OUTPUT`` image (only bmp format is supported). If ``OUTPUT`` is omitted then the image will have the same name as ``INPUT`` with adjusted extension. You can add optional ``-vscale`` option to shrink/enlarge color space. Default is 1.0.
+
+
+``-m 1 INPUT_1 INPUT_2 ... INPUT_N OUTPUT [-lima LIMIT_A] [-limb LIMIT_B] [-limc LIMIT_C] [-check CHECK] [-maug MERGE_AUGMENT_DIST] [-opt] [-exp] [-fill] [-t THREADS_NO]`` 
+
+Merge mode. Reads all of the ``INPUT_X`` point clouds, merges them and saves the merged point cloud to ``OUTPUT`` file. Other optional arguments controls how the merging is done. ``-exp`` adds exploiting of scoring function (used during the contest), ``-fill`` fills small holes in the input point clouds (difference is negligible), ``-opt`` improves speed of the second iteration of merging algorithm (no point in omitting it), ``-t THREADS_NO`` sets number of threads to ``THREADS_NO`` (default is 4, anything above 8 won't improve speed), ``-maug MERGE_AUGMENT_DIST`` adds naive augmentation of each point cloud by creating four additional copies at (-MERGE_AUGMENT_DIST, 0), (+MERGE_AUGMENT_DIST, 0), (0, -MERGE_AUGMENT_DIST), (0, +MERGE_AUGMENT_DIST) offsets and finally ``-lima LIMIT_A``, ``-limb LIMIT_B``, ``-limc LIMIT_C`` and ``-check CHECK`` are various constants used in scoring function exploting.
+
+
+``-r 1 OUTPUT_PREFIX INPUT_A INPUT_B "+OPTION_LIST" -nitfdir NITF_DIRECTORY -kml KML -data SIMPLIFIED_DATA_DIRECTORY``
+
+Run Mode. Reads ``NITF_DIRECTORY/INPUT_A`` and ``NITF_DIRECTORY/INPUT_B`` ntf files and produces ``results/OUTPUT_PREFIX.txt`` point cloud file. ``KML`` points out to kml file, and ``SIMPLIFIED_DATA_DIRECTORY`` points out to directory as specified in the original problem statement (parent directory that contains rpc, metadata and cropped images). ``OPTION_LIST`` is a space-delimited list of options that are directly pushed to StereoPipeline software. 
+
+
+``-f 1 OUTPUT_PREFIX ID_1 ID_2 ... ID_N "+OPTION_LIST" -nitfdir NITF_DIRECTORY -kml KML -data SIMPLIFIED_DATA_DIRECTORY``
+
+Final Mode. This is just a wrapper around Run Mode (``-r``), which it runs for each described pair. How the numbering of pairs is done is described below under the Running Program paragraph. ``-nitfdir NITF_DIRECTORY``, ``-kml KML`` and ``-data SIMPLIFIED_DATA_DIRECTORY`` function the same way as in Run Mode. The only difference is with OUTPUT_PREFIX, since in addition 4-digit zero-padded ``ID_X`` is added to it. For example ID 127 will produce point cloud in results/OUTPUT_PREFIX0127.txt file.
+
+
+Example usage:
+
+``./mvs -f 1 tmp 1 8 12 14 16 29 30 32 34 37 50 61 88 89 108 116 "+--subpixel-mode 2 --corr-kernel 11 11 --filter-mode 2 --rm-threshold 1 --prefilter-kernel-width 1.0" -nitfdir NITF/ -kml testing/MasterProvisional1/MasterProvisional1.kml -data testing/MasterProvisional1/``
+
+``./mvs -m 1 results/tmp????.txt provisional1.txt -kml testing/MasterProvisional1/MasterProvisional1.kml -lima 0.8 -limb 6.0 -limc 1.0 -check 10 -fill -exp -maug 0.10 -opt``
+
+``./mvs -v provisional1.txt -vscale 2.0``
 
 ---
 
